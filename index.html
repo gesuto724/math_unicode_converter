@@ -264,7 +264,7 @@
       <label for="output">変換結果</label>
       <textarea id="output" readonly></textarea>
       <div class="status" id="status" aria-live="polite"></div>
-      <div class="small">入力すると自動変換されます。コピーできない場合は、結果欄が選択されるので長押ししてコピーしてください。</div>
+      <div class="small">入力すると自動変換されます。指数全体に + や − を含める場合は、<code>x^{2n+1}</code>のように波括弧で囲みます。コピーできない場合は、結果欄が選択されるので長押ししてコピーしてください。</div>
     </section>
 
     <section class="panel">
@@ -276,6 +276,8 @@
         <div class="example"><code>fra x+1,y-2</code><br>→ (x+1)/(y−2)</div>
         <div class="example"><code>lim n,inf fra 1,n^2</code><br>→ lim(n→∞) 1/n²</div>
         <div class="example"><code>a[n+1] &lt;= b[n]</code><br>→ aₙ₊₁ ≤ bₙ</div>
+        <div class="example"><code>x^2n+1</code><br>→ x²ⁿ+1</div>
+        <div class="example"><code>x^{2n+1}</code><br>→ x²ⁿ⁺¹</div>
       </div>
     </section>
 
@@ -285,6 +287,8 @@
         <table>
           <tr><th>入力</th><th>出力</th></tr>
           <tr><td><code>x^2</code></td><td>x²</td></tr>
+          <tr><td><code>x^2n+1</code></td><td>x²ⁿ+1</td></tr>
+          <tr><td><code>x^{2n+1}</code></td><td>x²ⁿ⁺¹</td></tr>
           <tr><td><code>a[n+1]</code></td><td>aₙ₊₁</td></tr>
           <tr><td><code>fra x+1,y-2</code></td><td>(x+1)/(y−2)</td></tr>
           <tr><td><code>nth,2 x+1</code></td><td>√(x+1)</td></tr>
@@ -306,7 +310,10 @@
 
       var superscriptMap = {
         '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
-        '+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾','n':'ⁿ','i':'ⁱ','x':'ˣ','y':'ʸ'
+        '+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾',
+        'a':'ᵃ','b':'ᵇ','c':'ᶜ','d':'ᵈ','e':'ᵉ','f':'ᶠ','g':'ᵍ','h':'ʰ','i':'ⁱ','j':'ʲ',
+        'k':'ᵏ','l':'ˡ','m':'ᵐ','n':'ⁿ','o':'ᵒ','p':'ᵖ','r':'ʳ','s':'ˢ','t':'ᵗ','u':'ᵘ',
+        'v':'ᵛ','w':'ʷ','x':'ˣ','y':'ʸ','z':'ᶻ'
       };
 
       var subscriptMap = {
@@ -376,9 +383,27 @@
       }
 
       function convertPowers(text) {
-        return text.replace(/\^\(([^()]+)\)|\^(-?[0-9]+|[A-Za-z])/g, function (match, grouped, simple) {
-          return toSuperscript(grouped !== undefined ? '(' + grouped + ')' : simple);
+        var out = text;
+
+        // 波括弧は指数の範囲指定に使い、表示時には取り除く。
+        // 例: x^{2n+1} → x²ⁿ⁺¹
+        out = out.replace(/\^\{([^{}]+)\}/g, function (match, grouped) {
+          return toSuperscript(grouped);
         });
+
+        // 丸括弧は指数の一部として残す。
+        // 例: x^(2n+1) → x⁽²ⁿ⁺¹⁾
+        out = out.replace(/\^\(([^()]+)\)/g, function (match, grouped) {
+          return toSuperscript('(' + grouped + ')');
+        });
+
+        // 括弧なしでは、数字・英字が連続する部分を指数とする。
+        // 例: x^2n+1 → x²ⁿ+1
+        out = out.replace(/\^(-?[0-9A-Za-z]+)/g, function (match, simple) {
+          return toSuperscript(simple);
+        });
+
+        return out;
       }
 
       function convertSubscripts(text) {
